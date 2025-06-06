@@ -1,10 +1,19 @@
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
-from database.db import get_user_settings, toggle_notify_alerts, toggle_daily_report
+from aiogram.types import (
+    Message,
+    CallbackQuery,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton,
+)
+from database.db import (
+    get_user_settings,
+    toggle_daily_report,
+    get_servers_extended,
+    toggle_server_alert,
+)
 from aiogram import Bot
 from datetime import datetime
 from aiogram.types import User
-from database.db import get_servers
 import aiohttp
 
 
@@ -12,50 +21,94 @@ router = Router()
 bot: Bot = None
 
 
-def get_notification_keyboard(settings):
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(
-            text=f"Уведомления об упавших нодах: {'Вкл 🟢' if settings['notify_alerts'] else 'Выкл 🔴'}",
-            callback_data="toggle_alerts"
-        )],
-        [InlineKeyboardButton(
-            text=f"Ежедневный отчёт: {'Вкл 🟢' if settings['daily_report'] else 'Выкл 🔴'}",
-            callback_data="toggle_daily"
-        )]
+def get_notifications_main_keyboard(settings) -> InlineKeyboardMarkup:
+    """Keyboard with main notification options"""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="Настроить уведомления по серверам",
+                    callback_data="manage_alerts",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text=f"Ежедневный отчёт: {'Вкл 🟢' if settings['daily_report'] else 'Выкл 🔴'}",
+                    callback_data="toggle_daily",
+                )
+            ],
+        ]
+    )
+
+
+def get_notification_keyboard(settings, servers):
+    keyboard = []
+    for token, ip, name, flag in servers:
+        title = name or ip
+        keyboard.append([
+            InlineKeyboardButton(
+                text=f"{title}: {'Вкл 🟢' if flag else 'Выкл 🔴'}",
+                callback_data=f"toggle_server_{token}"
+            )
+        ])
+    keyboard.append([
+        InlineKeyboardButton(text="🔙 Назад", callback_data="notifications_back")
     ])
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 @router.message(F.text == "/notifications")
 async def show_notifications(message: Message):
     settings = await get_user_settings(message.from_user.id)
-    await message.answer("Настройки уведомлений:", reply_markup=get_notification_keyboard(settings))
+    await message.answer(
+        "🔔 Настройки уведомлений",
+        reply_markup=get_notifications_main_keyboard(settings),
+    )
 
-@router.callback_query(F.data == "toggle_alerts")
-async def toggle_alerts(callback: CallbackQuery):
+
+@router.callback_query(F.data == "manage_alerts")
+async def manage_alerts(callback: CallbackQuery):
+    """Show keyboard with per-server alert toggles"""
+    user_id = callback.from_user.id
+    settings = await get_user_settings(user_id)
+    servers = await get_servers_extended(user_id)
+    await callback.message.delete()
+    await callback.message.answer(
+        "⚙️ Уведомления по серверам",
+        reply_markup=get_notification_keyboard(settings, servers),
+    )
+
+@router.callback_query(F.data.startswith("toggle_server_"))
+async def toggle_server(callback: CallbackQuery):
     user: User = callback.from_user
     user_id = user.id
-    username = user.username or f"no_username:{user_id}"
+    token = callback.data.replace("toggle_server_", "")
 
-    await toggle_notify_alerts(user_id)
+    await toggle_server_alert(user_id, token)
+
+    # получение свежих данных для клавиатуры и рассылки на агент
+    servers = await get_servers_extended(user_id)
+    server = next((s for s in servers if s[0] == token), None)
+    if server:
+        ip = server[1]
+        flag = bool(server[3])
+        await send_alert_mode_to_agent(ip, token, flag)
+
     settings = await get_user_settings(user_id)
-
-    if settings["notify_alerts"]:
-        print(f"Уведомления о падающих нодах [FALL ALERTS ON] {user_id} | {username}")
-    else:
-        print(f"Уведомления о падающих нодах [FALL ALERTS OFF] {user_id} | {username}")
-
-    # 🔁 Рассылаем настройку на все сервера
-    servers = await get_servers(user_id)
-    for token, ip, _ in servers:
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(f"http://{ip}/set_alert_mode", json={"enabled": settings["notify_alerts"]}) as resp:
-                    await resp.read()
-            print(f"✅ Отправлен режим alerts_enabled={settings['notify_alerts']} на {ip}")
-        except Exception as e:
-            print(f"❌ Не удалось отправить на {ip}: {e}")
-
-    await callback.message.edit_reply_markup(reply_markup=get_notification_keyboard(settings))
+    await callback.message.edit_reply_markup(
+        reply_markup=get_notification_keyboard(settings, servers)
+    )
     await callback.answer("Изменено.")
+
+
+@router.callback_query(F.data == "notifications_back")
+async def notifications_back(callback: CallbackQuery):
+    user_id = callback.from_user.id
+    settings = await get_user_settings(user_id)
+    await callback.message.delete()
+    await callback.message.answer(
+        "🔔 Настройки уведомлений",
+        reply_markup=get_notifications_main_keyboard(settings),
+    )
 
 
 
@@ -76,7 +129,9 @@ async def toggle_daily(callback: CallbackQuery):
     else:
         print(f"Ежедневный репорт [DAILY OFF] {user_id} | {username}")
 
-    await callback.message.edit_reply_markup(reply_markup=get_notification_keyboard(settings))
+    await callback.message.edit_reply_markup(
+        reply_markup=get_notifications_main_keyboard(settings)
+    )
     await callback.answer("Изменено.")
 
 async def send_alert_mode_to_agent(ip: str, token: str, alerts_enabled: bool):
