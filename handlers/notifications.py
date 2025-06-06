@@ -5,7 +5,6 @@ from aiogram.types import (
     InlineKeyboardMarkup,
     InlineKeyboardButton,
 )
-from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from database.db import (
     get_user_settings,
     toggle_daily_report,
@@ -54,10 +53,6 @@ def get_notification_keyboard(settings, servers):
         ])
     keyboard.append([
         InlineKeyboardButton(text="🔙 Назад", callback_data="notifications_back")
-        InlineKeyboardButton(
-            text=f"Ежедневный отчёт: {'Вкл 🟢' if settings['daily_report'] else 'Выкл 🔴'}",
-            callback_data="toggle_daily",
-        )
     ])
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
@@ -79,9 +74,6 @@ async def manage_alerts(callback: CallbackQuery):
     await callback.message.delete()
     await callback.message.answer(
         "⚙️ Уведомления по серверам",
-    servers = await get_servers_extended(message.from_user.id)
-    await message.answer(
-        "Настройки уведомлений:",
         reply_markup=get_notification_keyboard(settings, servers),
     )
 
@@ -139,9 +131,6 @@ async def toggle_daily(callback: CallbackQuery):
 
     await callback.message.edit_reply_markup(
         reply_markup=get_notifications_main_keyboard(settings)
-    servers = await get_servers_extended(user_id)
-    await callback.message.edit_reply_markup(
-        reply_markup=get_notification_keyboard(settings, servers)
     )
     await callback.answer("Изменено.")
 
