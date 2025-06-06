@@ -38,9 +38,9 @@ async def process_name(message: Message, state: FSMContext):
     name = message.text.strip().replace(" ", "_")[:16]
     data = await state.get_data()
     token = data["token"]
-    await add_server(message.chat.id, token, data["ip"], name)
-    await message.answer(f"✅ Сервер {data['ip']} добавлен как `{name}`", parse_mode="Markdown")
     flag = await get_notify_alerts_for_user(message.chat.id)
+    await add_server(message.chat.id, token, data["ip"], name, int(flag))
+    await message.answer(f"✅ Сервер {data['ip']} добавлен как `{name}`", parse_mode="Markdown")
     await send_alert_mode_to_agent(data["ip"], token, flag)
     await state.clear()
 
