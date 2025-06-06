@@ -22,6 +22,8 @@ async def start_command(message: Message):
         parse_mode="Markdown"
     )
 
+    # загружаем настройки пользователя для отображения меню
+        # основной экран уведомлений требует только текущие настройки
 @router.message(Command("help"))
 async def help_command(message: Message):
     text = (
