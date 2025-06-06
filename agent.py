@@ -351,10 +351,13 @@ def monitor_nodes():
                     if ALERTS_ENABLED and not was_already_reported(name):
                         send_alert(name)
                         mark_alert(name, True)
+
                         print(f"❌ Нода {name} упала! Алерт отправлен")
             else:
                 if name in failure_times:
                     failure_times.pop(name, None)
+            else:
+                failure_times.pop(name, None)
                 if was_already_reported(name):
                     mark_alert(name, False)
 
