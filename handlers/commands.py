@@ -51,7 +51,7 @@ async def notifications_command(message: Message):
     servers = await get_servers_extended(message.from_user.id)
     await message.answer(
         "🔔 Настройки уведомлений",
-        reply_markup=get_notification_keyboard(settings, servers),)
+        reply_markup=get_notification_main_keyboard(settings, servers),)
 
 @router.message(Command("funcs"))
 async def funcs_command(message: Message):
