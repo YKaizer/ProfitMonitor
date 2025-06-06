@@ -376,10 +376,10 @@ def monitor_disk():
         except Exception as e:
             print("Ошибка проверки Docker:", e)
 
-        # 🔁 Перезапуск Ritual если диск > 80%
-        if ritual_detected and percent > 80:
+        # 🔁 Перезапуск Ritual если диск > 95%
+        if ritual_detected and percent > 95:
             try:
-                print("📦 Диск > 80% и Ritual найден — перезапуск...")
+                print("📦 Диск > 95% и Ritual найден — перезапуск...")
 
                 # Остановка docker-compose
                 down_result = subprocess.call(["docker-compose", "-f", COMPOSE_PATH, "down"])
@@ -402,7 +402,7 @@ def monitor_disk():
                 print("❌ Ошибка перезапуска Ritual:", e)
 
         # 🔔 Алерт по диску
-        if percent >= 80 and not ALERT_SENT:
+        if percent >= 95 and not ALERT_SENT:
             try:
                 requests.post(BOT_ALERT_URL, json={
                     "token": get_token(),
@@ -414,7 +414,7 @@ def monitor_disk():
             except Exception as e:
                 print("Ошибка отправки алерта:", e)
 
-        elif percent < 78 and ALERT_SENT:
+        elif percent < 93 and ALERT_SENT:
             ALERT_SENT = False
 
         time.sleep(CHECK_INTERVAL)
