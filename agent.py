@@ -6,6 +6,7 @@ import asyncio
 
 app = FastAPI()
 CHECK_INTERVAL = 60
+FAILURE_CONFIRMATION = 120  # время подтверждения падения ноды (сек)
 ALERTS_ENABLED = False
 ALERT_SENT = False
 BOT_ALERT_URL = "http://91.108.246.138:8080/alert"
@@ -13,6 +14,9 @@ ALERT_DB_PATH = os.path.join(os.path.dirname(__file__), "alerts.db")
 COMPOSE_PATH = os.path.expanduser("~/infernet-container-starter/deploy/docker-compose.yaml")
 print("📁 Current working dir:", os.getcwd())
 print("📄 Full DB path:", ALERT_DB_PATH)
+
+# словарь времени первого падения ноды
+failure_times = {}
 
 # === Ноды ===
 NODE_SYSTEMD = {
@@ -208,7 +212,8 @@ def get_installed_nodes():
     # 2. processes
     for proc in psutil.process_iter(['cmdline']):
         try:
-            cmd = " ".join(proc.info['cmdline'])
+            cmdline = proc.info.get('cmdline') or []
+            cmd = " ".join(cmdline)
             for name, keyword in NODE_PROCESSES.items():
                 if keyword in cmd:
                     result.append(name)
@@ -268,6 +273,7 @@ def monitor_nodes():
 
     while True:
         failed = set()
+        now = time.time()
 
         # === Systemd
         for name in installed_nodes:
@@ -305,7 +311,8 @@ def monitor_nodes():
         active = set()
         for p in psutil.process_iter(['cmdline']):
             try:
-                cmd = " ".join(p.info['cmdline'])
+                cmdline = p.info.get('cmdline') or []
+                cmd = " ".join(cmdline)
                 for proc_name, keyword in NODE_PROCESSES.items():
                     if proc_name in installed_nodes and keyword in cmd:
                         active.add(proc_name)
@@ -334,15 +341,19 @@ def monitor_nodes():
                 failed.add("Gaia")
 
 
-        # === Отправка алертов
-        for name in failed:
-            if ALERTS_ENABLED and not was_already_reported(name):
-                send_alert(name)
-                mark_alert(name, True)
-
+        # === Отправка алертов с проверкой повторного запуска
         for name in installed_nodes:
-            if name not in failed:
-                mark_alert(name, False)
+            if name in failed:
+                if name not in failure_times:
+                    failure_times[name] = now
+                elif now - failure_times[name] >= FAILURE_CONFIRMATION:
+                    if ALERTS_ENABLED and not was_already_reported(name):
+                        send_alert(name)
+                        mark_alert(name, True)
+            else:
+                failure_times.pop(name, None)
+                if was_already_reported(name):
+                    mark_alert(name, False)
 
         time.sleep(CHECK_INTERVAL)
 

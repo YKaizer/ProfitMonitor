@@ -48,7 +48,12 @@ async def info_callback(callback: CallbackQuery):
 @router.message(Command("notifications"))
 async def notifications_command(message: Message):
     settings = await get_user_settings(message.from_user.id)
-    await message.answer("🔔 Настройки уведомлений", reply_markup=get_notification_keyboard(settings))
+    from database.db import get_servers_extended
+    servers = await get_servers_extended(message.from_user.id)
+    await message.answer(
+        "🔔 Настройки уведомлений",
+        reply_markup=get_notification_keyboard(settings, servers),
+    )
 
 @router.message(Command("funcs"))
 async def funcs_command(message: Message):
