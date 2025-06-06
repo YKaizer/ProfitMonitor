@@ -346,12 +346,15 @@ def monitor_nodes():
             if name in failed:
                 if name not in failure_times:
                     failure_times[name] = now
+                    print(f"⚠️ Нода {name} упала, жду {FAILURE_CONFIRMATION} сек")
                 elif now - failure_times[name] >= FAILURE_CONFIRMATION:
                     if ALERTS_ENABLED and not was_already_reported(name):
                         send_alert(name)
                         mark_alert(name, True)
+                        print(f"❌ Нода {name} упала! Алерт отправлен")
             else:
-                failure_times.pop(name, None)
+                if name in failure_times:
+                    failure_times.pop(name, None)
                 if was_already_reported(name):
                     mark_alert(name, False)
 
