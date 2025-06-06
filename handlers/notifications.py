@@ -1,4 +1,10 @@
 from aiogram import Router, F
+from aiogram.types import (
+    Message,
+    CallbackQuery,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton,
+)
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from database.db import (
     get_user_settings,
@@ -16,6 +22,26 @@ router = Router()
 bot: Bot = None
 
 
+def get_notifications_main_keyboard(settings) -> InlineKeyboardMarkup:
+    """Keyboard with main notification options"""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="Настроить уведомления по серверам",
+                    callback_data="manage_alerts",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text=f"Ежедневный отчёт: {'Вкл 🟢' if settings['daily_report'] else 'Выкл 🔴'}",
+                    callback_data="toggle_daily",
+                )
+            ],
+        ]
+    )
+
+
 def get_notification_keyboard(settings, servers):
     keyboard = []
     for token, ip, name, flag in servers:
@@ -27,6 +53,7 @@ def get_notification_keyboard(settings, servers):
             )
         ])
     keyboard.append([
+        InlineKeyboardButton(text="🔙 Назад", callback_data="notifications_back")
         InlineKeyboardButton(
             text=f"Ежедневный отчёт: {'Вкл 🟢' if settings['daily_report'] else 'Выкл 🔴'}",
             callback_data="toggle_daily",
@@ -37,6 +64,21 @@ def get_notification_keyboard(settings, servers):
 @router.message(F.text == "/notifications")
 async def show_notifications(message: Message):
     settings = await get_user_settings(message.from_user.id)
+    await message.answer(
+        "🔔 Настройки уведомлений",
+        reply_markup=get_notifications_main_keyboard(settings),
+    )
+
+
+@router.callback_query(F.data == "manage_alerts")
+async def manage_alerts(callback: CallbackQuery):
+    """Show keyboard with per-server alert toggles"""
+    user_id = callback.from_user.id
+    settings = await get_user_settings(user_id)
+    servers = await get_servers_extended(user_id)
+    await callback.message.delete()
+    await callback.message.answer(
+        "⚙️ Уведомления по серверам",
     servers = await get_servers_extended(message.from_user.id)
     await message.answer(
         "Настройки уведомлений:",
@@ -66,6 +108,17 @@ async def toggle_server(callback: CallbackQuery):
     await callback.answer("Изменено.")
 
 
+@router.callback_query(F.data == "notifications_back")
+async def notifications_back(callback: CallbackQuery):
+    user_id = callback.from_user.id
+    settings = await get_user_settings(user_id)
+    await callback.message.delete()
+    await callback.message.answer(
+        "🔔 Настройки уведомлений",
+        reply_markup=get_notifications_main_keyboard(settings),
+    )
+
+
 
 @router.callback_query(F.data == "toggle_daily")
 async def toggle_daily(callback: CallbackQuery):
@@ -84,6 +137,8 @@ async def toggle_daily(callback: CallbackQuery):
     else:
         print(f"Ежедневный репорт [DAILY OFF] {user_id} | {username}")
 
+    await callback.message.edit_reply_markup(
+        reply_markup=get_notifications_main_keyboard(settings)
     servers = await get_servers_extended(user_id)
     await callback.message.edit_reply_markup(
         reply_markup=get_notification_keyboard(settings, servers)
