@@ -5,6 +5,7 @@ from utils.keyboard import get_info_keyboard, get_funcs_keyboard
 from database.db import get_user_settings
 from handlers.notifications import get_notifications_main_keyboard
 from aiogram.types import FSInputFile
+from database.db import get_servers_extended
 
 router = Router()
 
@@ -47,11 +48,10 @@ async def info_callback(callback: CallbackQuery):
 
 @router.message(Command("notifications"))
 async def notifications_command(message: Message):
-    settings = await get_user_settings(message.from_user.id)
+    servers = await get_servers_extended(message.from_user.id)
     await message.answer(
         "🔔 Настройки уведомлений",
-        reply_markup=get_notifications_main_keyboard(settings),
-    )
+        reply_markup=get_notification_keyboard(settings, servers),
 
 @router.message(Command("funcs"))
 async def funcs_command(message: Message):
