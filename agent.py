@@ -212,7 +212,8 @@ def get_installed_nodes():
     # 2. processes
     for proc in psutil.process_iter(['cmdline']):
         try:
-            cmd = " ".join(proc.info['cmdline'])
+            cmdline = proc.info.get('cmdline') or []
+            cmd = " ".join(cmdline)
             for name, keyword in NODE_PROCESSES.items():
                 if keyword in cmd:
                     result.append(name)
@@ -310,7 +311,8 @@ def monitor_nodes():
         active = set()
         for p in psutil.process_iter(['cmdline']):
             try:
-                cmd = " ".join(p.info['cmdline'])
+                cmdline = p.info.get('cmdline') or []
+                cmd = " ".join(cmdline)
                 for proc_name, keyword in NODE_PROCESSES.items():
                     if proc_name in installed_nodes and keyword in cmd:
                         active.add(proc_name)
