@@ -26,7 +26,6 @@ backup.bot = bot
 
 
 
-
 async def set_bot_commands():
     await bot.set_my_commands([
         BotCommand(command="start", description="Приветствие"),

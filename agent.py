@@ -261,8 +261,13 @@ def send_alert(name: str, custom_message: str = None):
             "alert_id": f"{name}-{int(time.time())}",
             "message": custom_message or f"❌ Упала нода: {name}"
         }
-        requests.post(BOT_ALERT_URL, json=payload)
-        print(f"🔔 Алерт отправлен: {name}")
+        resp = requests.post(BOT_ALERT_URL, json=payload)
+        if resp.status_code == 200:
+            print(f"🔔 Алерт отправлен: {name}")
+        else:
+            print(
+                f"❌ Не удалось отправить алерт {name}: {resp.status_code} {resp.text}"
+            )
     except Exception as e:
         print("Ошибка отправки алерта:", e)
 

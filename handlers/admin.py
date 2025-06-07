@@ -3,7 +3,6 @@ from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
 from fsm.states import BroadcastState
-
 from database.db import (
     get_all_users,
     get_user_count,
