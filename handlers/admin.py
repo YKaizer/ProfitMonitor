@@ -3,7 +3,14 @@ from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
 from fsm.states import BroadcastState
-from database.db import get_all_users
+from database.db import (
+    get_all_users,
+    get_user_count,
+    get_server_count,
+)
+from utils.backup import BACKUP_DIR
+from aiogram.types import FSInputFile
+import os
 
 router = Router()
 bot: Bot = None
@@ -57,3 +64,32 @@ async def broadcast_cancel(callback: CallbackQuery, state: FSMContext):
         return
     await state.clear()
     await callback.message.edit_text("Рассылка отменена.")
+
+
+@router.message(Command("get_backup"))
+async def get_backup_cmd(message: Message):
+    if message.from_user.id != ADMIN_ID:
+        return
+
+    files = [f for f in os.listdir(BACKUP_DIR) if f.startswith("bot_data_")]
+    if not files:
+        await message.answer("Нет доступных бэкапов.")
+        return
+
+    latest = sorted(files)[-1]
+    path = os.path.join(BACKUP_DIR, latest)
+    await message.answer_document(FSInputFile(path))
+
+
+@router.message(Command("get_info"))
+async def get_info_cmd(message: Message):
+    if message.from_user.id != ADMIN_ID:
+        return
+
+    users = await get_user_count()
+    servers = await get_server_count()
+    text = (
+        f"👥 Пользователей зарегистрировано: {users}\n"
+        f"🖥️ Добавлено серверов: {servers}"
+    )
+    await message.answer(text)

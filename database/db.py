@@ -122,6 +122,18 @@ async def get_all_users():
         rows = await cursor.fetchall()
         return [row[0] for row in rows]
 
+async def get_user_count() -> int:
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute("SELECT COUNT(*) FROM users")
+        row = await cursor.fetchone()
+        return row[0] if row else 0
+
+async def get_server_count() -> int:
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute("SELECT COUNT(*) FROM servers")
+        row = await cursor.fetchone()
+        return row[0] if row else 0
+
 async def get_notify_alerts_for_user(user_id: int) -> bool:
     async with aiosqlite.connect("bot_data.db") as db:
         async with db.execute("SELECT notify_alerts FROM users WHERE user_id = ?", (user_id,)) as cursor:
