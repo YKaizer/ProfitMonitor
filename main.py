@@ -11,7 +11,7 @@ from utils.tokens import rotate_tokens_loop
 from handlers import notifications
 from utils import reports
 from aiogram.types import BotCommand
-from utils.backup import backup_loop
+from utils import backup
 
 bot = Bot(API_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
@@ -22,6 +22,8 @@ server_manage.bot = bot
 notifications.bot = bot
 reports.bot = bot
 admin.bot = bot
+backup.bot = bot
+
 
 
 
@@ -52,7 +54,7 @@ async def main():
     await set_bot_commands()
     asyncio.create_task(rotate_tokens_loop())
     asyncio.create_task(reports.loop_daily_reports())
-    asyncio.create_task(backup_loop())
+    asyncio.create_task(backup.backup_loop())
 
     config = Config(app=app, host="0.0.0.0", port=8080, log_level="info")
     server = Server(config)
