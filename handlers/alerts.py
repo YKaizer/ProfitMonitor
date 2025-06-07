@@ -26,7 +26,7 @@ async def handle_alert(request: Request):
     if message:
         text = f"⚠️ Уведомление от `{name}` ({ip}):\n\n{message}"
     elif percent:
-        text = f"⚠️ Сервер `{name}` ({ip}) почти забит!\nДиск: {percent}%\n\n⏳ Перезапущен docker-compose Ritual."
+        text = f"⚠️ Сервер `{name}` ({ip}) почти забит (диск > 95%)!\nДиск: {percent}%\n\n⏳ Перезапущен docker-compose Ritual."
     else:
         text = f"⚠️ Пришёл неизвестный алерт с сервера `{name}` ({ip})"
 

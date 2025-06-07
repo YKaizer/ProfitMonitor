@@ -11,9 +11,15 @@ async def init_db():
                 token TEXT,
                 ip TEXT,
                 name TEXT DEFAULT '',
-                note TEXT DEFAULT ''
+                note TEXT DEFAULT '',
+                alerts_enabled INTEGER DEFAULT 1
             )
         """)
+        # попытка добавить колонку alerts_enabled если база создана ранее
+        try:
+            await db.execute("ALTER TABLE servers ADD COLUMN alerts_enabled INTEGER DEFAULT 1")
+        except Exception:
+            pass
         await db.execute("""
             CREATE TABLE IF NOT EXISTS token_history (
                 token TEXT,
@@ -34,15 +40,24 @@ async def init_db():
         await db.commit()
 
 
-async def add_server(user_id: int, token: str, ip: str, name: str = ""):
+async def add_server(user_id: int, token: str, ip: str, name: str = "", alerts_enabled: int = 1):
     async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute("INSERT INTO servers (user_id, token, ip, name) VALUES (?, ?, ?, ?)", (user_id, token, ip, name))
+        await db.execute("INSERT INTO servers (user_id, token, ip, name, alerts_enabled) VALUES (?, ?, ?, ?, ?)", (user_id, token, ip, name, alerts_enabled))
         await db.execute("INSERT INTO token_history (token, ip) VALUES (?, ?)", (token, ip))
         await db.commit()
 
 async def get_servers(user_id: int):
     async with aiosqlite.connect(DB_PATH) as db:
         cursor = await db.execute("SELECT token, ip, name FROM servers WHERE user_id = ?", (user_id,))
+        return await cursor.fetchall()
+
+async def get_servers_extended(user_id: int):
+    """Вернуть список серверов вместе с флагом alerts_enabled"""
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute(
+            "SELECT token, ip, name, alerts_enabled FROM servers WHERE user_id = ?",
+            (user_id,),
+        )
         return await cursor.fetchall()
 
 async def delete_server(user_id: int, token: str):
@@ -107,6 +122,18 @@ async def get_all_users():
         rows = await cursor.fetchall()
         return [row[0] for row in rows]
 
+async def get_user_count() -> int:
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute("SELECT COUNT(*) FROM users")
+        row = await cursor.fetchone()
+        return row[0] if row else 0
+
+async def get_server_count() -> int:
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute("SELECT COUNT(*) FROM servers")
+        row = await cursor.fetchone()
+        return row[0] if row else 0
+
 async def get_notify_alerts_for_user(user_id: int) -> bool:
     async with aiosqlite.connect("bot_data.db") as db:
         async with db.execute("SELECT notify_alerts FROM users WHERE user_id = ?", (user_id,)) as cursor:
@@ -114,6 +141,20 @@ async def get_notify_alerts_for_user(user_id: int) -> bool:
             if row is None:
                 return False  # По умолчанию считаем True (или False — если хочешь отключать)
             return bool(row[0])
+
+async def toggle_server_alert(user_id: int, token: str):
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "UPDATE servers SET alerts_enabled = 1 - alerts_enabled WHERE user_id = ? AND token = ?",
+            (user_id, token),
+        )
+        await db.commit()
+
+async def get_server_alert_status(token: str) -> bool:
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute("SELECT alerts_enabled FROM servers WHERE token = ?", (token,))
+        row = await cursor.fetchone()
+        return bool(row[0]) if row else False
 
 async def get_ip(token: str):
     async with aiosqlite.connect(DB_PATH) as db:
