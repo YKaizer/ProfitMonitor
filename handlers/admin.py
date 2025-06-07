@@ -65,7 +65,6 @@ async def broadcast_cancel(callback: CallbackQuery, state: FSMContext):
     await state.clear()
     await callback.message.edit_text("Рассылка отменена.")
 
-
 @router.message(Command("get_backup"))
 async def get_backup_cmd(message: Message):
     if message.from_user.id != ADMIN_ID:

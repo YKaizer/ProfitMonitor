@@ -5,6 +5,7 @@ from utils.keyboard import get_info_keyboard, get_funcs_keyboard
 from database.db import get_user_settings
 from handlers.notifications import get_notifications_main_keyboard
 from aiogram.types import FSInputFile
+from database.db import get_servers_extended
 
 router = Router()
 
