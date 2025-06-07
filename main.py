@@ -6,6 +6,7 @@ import asyncio
 from config import API_TOKEN
 from database.db import init_db
 from handlers import commands, server_manage, navigation, alerts
+from handlers import admin
 from utils.tokens import rotate_tokens_loop
 from handlers import notifications
 from utils import reports
@@ -20,6 +21,7 @@ navigation.bot = bot
 server_manage.bot = bot
 notifications.bot = bot
 reports.bot = bot
+admin.bot = bot
 
 
 
@@ -38,6 +40,7 @@ dp.include_router(commands.router)
 dp.include_router(server_manage.router)
 dp.include_router(navigation.router)
 dp.include_router(notifications.router)
+dp.include_router(admin.router)
 
 # FastAPI роутер для /alert
 alerts.bot = bot  # пробросим бота в модуль
