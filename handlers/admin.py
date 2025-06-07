@@ -3,6 +3,7 @@ from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
 from fsm.states import BroadcastState
+
 from database.db import (
     get_all_users,
     get_user_count,
@@ -64,7 +65,6 @@ async def broadcast_cancel(callback: CallbackQuery, state: FSMContext):
         return
     await state.clear()
     await callback.message.edit_text("Рассылка отменена.")
-
 
 @router.message(Command("get_backup"))
 async def get_backup_cmd(message: Message):
