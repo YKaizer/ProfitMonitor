@@ -11,6 +11,8 @@ router = Router()
 
 @router.message(Command("start"))
 async def start_command(message: Message):
+    # Ensure the user exists in the database so that broadcasts reach them
+    await get_user_settings(message.from_user.id)
     photo = FSInputFile("welcome_monitor.png")
     await message.answer_photo(
         photo=photo,
