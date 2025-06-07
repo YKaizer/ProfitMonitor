@@ -32,7 +32,7 @@ async def init_db():
         await db.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 user_id INTEGER PRIMARY KEY,
-                notify_alerts INTEGER DEFAULT 0,
+                notify_alerts INTEGER DEFAULT 1,
                 daily_report INTEGER DEFAULT 0,
                 report_hour INTEGER DEFAULT 10
             )
@@ -87,7 +87,10 @@ async def get_user_settings(user_id: int):
         if row:
             return {"notify_alerts": bool(row[0]), "daily_report": bool(row[1])}
         else:
-            await db.execute("INSERT INTO users (user_id) VALUES (?)", (user_id,))
+            await db.execute(
+                "INSERT INTO users (user_id, notify_alerts) VALUES (?, 1)",
+                (user_id,)
+            )
             await db.commit()
             return {"notify_alerts": True, "daily_report": False}
 
@@ -139,7 +142,7 @@ async def get_notify_alerts_for_user(user_id: int) -> bool:
         async with db.execute("SELECT notify_alerts FROM users WHERE user_id = ?", (user_id,)) as cursor:
             row = await cursor.fetchone()
             if row is None:
-                return False  # По умолчанию считаем True (или False — если хочешь отключать)
+                return True
             return bool(row[0])
 
 async def toggle_server_alert(user_id: int, token: str):
